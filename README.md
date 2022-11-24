@@ -12,4 +12,4 @@ The idea is that these tools can be used on any ONX device running Ubuntu, Windo
 ---
 
 Example one-line command:
-> `bash <(curl -s https://raw.github.com/optimanetworks/onx/)`
+> `bash <(curl -s https://raw.github.com/optimanetworks/onx/main/README.md)`
