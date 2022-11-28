@@ -18,6 +18,10 @@ log_file="/var/log/diskconfig.log"
 disk_boot=$( eval $(lsblk -oMOUNTPOINT,PKNAME -P -M | grep 'MOUNTPOINT="/"'); echo $PKNAME | if [[ $PKNAME == *"nvme"* ]]; then sed 's/p[0-9]*$//'; elif [[ $PKNAME == *"sd"* ]]; then sed 's/[0-9]*$//'; elif [[ $PKNAME == *"mmcblk"* ]]; then sed 's/p[0-9]*$//'; fi )
 disk_list=($(lsblk -Snpo NAME | grep -v "$disk_boot"))
 
+if [ ! -e "$log_file" ]; then
+	touch "$log_file"
+fi
+
 apt install -qqy jo jq smartmontools
 
 exec > "$log_file" 2>&1
