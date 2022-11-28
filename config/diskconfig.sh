@@ -18,11 +18,11 @@ log_file="/var/log/diskconfig.log"
 disk_boot=$( eval $(lsblk -oMOUNTPOINT,PKNAME -P -M | grep 'MOUNTPOINT="/"'); echo $PKNAME | if [[ $PKNAME == *"nvme"* ]]; then sed 's/p[0-9]*$//'; elif [[ $PKNAME == *"sd"* ]]; then sed 's/[0-9]*$//'; elif [[ $PKNAME == *"mmcblk"* ]]; then sed 's/p[0-9]*$//'; fi )
 disk_list=($(lsblk -Snpo NAME | grep -v "$disk_boot"))
 
-sudo apt install -qqy jo jq smartmontools
+apt install -qqy jo jq smartmontools
 
-sudo exec > "$log_file" 2>&1
+exec > "$log_file" 2>&1
 
-echo -e "=== Diskconfig started at $(date +%F %T) ==="
+echo -e "=== Diskconfig started at $(date '+%F %T') ==="
 echo -e ""$INFO" "$disk_boot" is the boot device."
 
 if [ ${#disk_list[@]} -eq 0 ]; then
@@ -60,14 +60,14 @@ done
 read -p "Do you wish to wipe all marked disks and configure them automatically? Any data on the disks will be lost. (Y/N) " -n 1 -r
 if [[ $REPLY =~ ^[^Yy]$ ]]; then
 	for disk in ${marked_list[@]}; do
-		sudo wipefs -a $disk && echo -e ""$INFO" Successfully wiped "$disk"." || echo -e ""$ERROR" Failed to wipe "$disk"."
-		sudo parted mktable gpt && echo -e ""$INFO" Successfully created partition table on "$disk"." || echo -e  ""$ERROR" Failed create partition table on "$disk"."
-		sudo parted mkpart -a optimal primary 0% 100% && echo -e ""$INFO" Successfully created partition on "$disk"." || echo -e  ""$ERROR" Failed to create partition on "$disk"."
-		sudo mkfs.ext4 -F "$disk"1 && echo -e  ""$INFO" Successfully wrote filesystem to "$disk"." || echo -e  ""$ERROR" Failed to write filesystem to "$disk"."
+		wipefs -a $disk && echo -e ""$INFO" Successfully wiped "$disk"." || echo -e ""$ERROR" Failed to wipe "$disk"."
+		parted mktable gpt && echo -e ""$INFO" Successfully created partition table on "$disk"." || echo -e  ""$ERROR" Failed create partition table on "$disk"."
+		parted mkpart -a optimal primary 0% 100% && echo -e ""$INFO" Successfully created partition on "$disk"." || echo -e  ""$ERROR" Failed to create partition on "$disk"."
+		mkfs.ext4 -F "$disk"1 && echo -e  ""$INFO" Successfully wrote filesystem to "$disk"." || echo -e  ""$ERROR" Failed to write filesystem to "$disk"."
 		part_uuid="$(blkid -s UUID -o value "$disk"1)"
-		sudo mkdir -p /mnt/Media/"$part_uuid" && echo -e ""$INFO" Successfully created directory /mnt/Media/"$part_uuid"." || echo -e ""$ERROR" Failed to create directory /mnt/Media/"$part_uuid"."
+		mkdir -p /mnt/Media/"$part_uuid" && echo -e ""$INFO" Successfully created directory /mnt/Media/"$part_uuid"." || echo -e ""$ERROR" Failed to create directory /mnt/Media/"$part_uuid"."
 		echo -e "UUID=\""$part_uuid"\"\t/mnt/Media/"$part_uuid"\text4\terrors=continue,nofail\t0\t2" >> /etc/fstab
-		sudo mount /mnt/Media/"$part_uuid" && echo -e ""$INFO" Successfully mounted partition to /mnt/Media/"$part_uuid"." || echo -e ""$ERROR" Failed to mount partition to /mnt/Media/"$part_uuid"."
+		mount /mnt/Media/"$part_uuid" && echo -e ""$INFO" Successfully mounted partition to /mnt/Media/"$part_uuid"." || echo -e ""$ERROR" Failed to mount partition to /mnt/Media/"$part_uuid"."
 	done
 else
 	echo -e ""$INFO" Aborting script."
