@@ -5,7 +5,7 @@ log_file="/var/log/watool.log"
 
 log_this () {
 	# Log function input with date and time.
-	echo `date +%Y/%m/%d' '%H:%M:%S`" $1" >> "$log_file"
+	echo `date +%Y/%m/%d' '%H:%M:%S`" $1" | tee -a "$log_file"
 }
 
 check_privileges () {
