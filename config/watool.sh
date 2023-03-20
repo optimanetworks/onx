@@ -75,13 +75,11 @@ case $1 in
 		exit 0
 		;;
 	"")
-		echo "No option parameter passed, exiting..."
 		show_help
 		log_this "Script ran without option parameter."
 		exit 1
 		;;
 	*)
-		echo "Invalid option parameter passed, exiting..."
 		show_help
 		log_this "Script ran with invalid option parameter: $1"
 		exit 1
