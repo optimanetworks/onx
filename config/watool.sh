@@ -48,6 +48,7 @@ self_install () {
 			log_this "Cronjob created."
 		fi
 	fi
+	log_this "Installation procedure completed."
 }
 
 run_task () {
