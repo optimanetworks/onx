@@ -55,7 +55,7 @@ run_task () {
 	# Run unattended-upgrade to check for and install security updates, then reboot.
 	unattended-upgrade && log_this "Ran unattended upgrade." || log_this "Unattended upgrade failed."
 	log_this "Rebooting..."
-	/usr/sbin/shutdown -r now || log_this "Reboot failed."
+	/sbin/shutdown -r now || log_this "Reboot failed."
 }
 
 # Script start
