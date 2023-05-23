@@ -2,6 +2,7 @@
 
 install_path="/usr/local/sbin/watool"
 log_file="/var/log/watool.log"
+update=false
 
 log_this () {
 	# Log function input with date and time.
@@ -28,6 +29,8 @@ show_help () {
 	echo ""
 	echo "    -i|--install -  Installs the script."
 	echo ""
+	echo "    -U|--update  -  Update the existing script."
+	echo ""
 	echo "    -r|--run     -  Run the script once."
 	echo ""
 }
@@ -35,10 +38,16 @@ show_help () {
 self_install () {
 	# Move script to destination file path if needed and create cronjob if it doesn't exist. 
 	[ -e "$log_file" ] || touch "$log_file"
-	if [ -e "$install_path" ]; then
+	if $update || [ -e "$install_path" ]; then
 		echo "Script already installed, exiting..."
 		exit 1
-	else
+	elif $update && [ -e "$install_path" ]; then
+		mv $0 "$install_path"
+		log_this "Updated script in $install_path."
+	elif $update && [ ! -e "$install_path"]; then
+		log_this "Script not installed yet, exiting..."
+		exit 1
+	elif $update || [ ! -e "$install_path" ]; then
 		mv $0 "$install_path"
 		log_this "Script moved to "$install_path"."
 		if [[ $(crontab -l | egrep -v "^(#|$)" | grep -q '/usr/local/sbin/watool --run'; echo $?) == 1 ]]; then
@@ -47,8 +56,8 @@ self_install () {
     		set +f
 			log_this "Cronjob created."
 		fi
+		log_this "Installation procedure completed."
 	fi
-	log_this "Installation procedure completed."
 }
 
 run_task () {
@@ -66,6 +75,12 @@ case $1 in
 		;;
 	-i|--install)
 		check_privileges
+		self_install
+		exit 0
+		;;
+	-U|--update)
+		check_privileges
+		update=true
 		self_install
 		exit 0
 		;;
