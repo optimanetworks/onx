@@ -172,7 +172,7 @@ case $1 in
 		;;
 	-U|--update)
 		check_privileges
-		installer
+		updater
 		exit 0
 		;;
 	-c|--config)
