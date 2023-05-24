@@ -86,9 +86,6 @@ mk_config () {
 	touch $config_file
 	echo -e '# This is the configuration file for watool.\nRESTART=false\nUPDATES=false\nINTERVAL="@weekly"' > $config_file
 	. $config_file
-	ch_config RESTART
-	ch_config UPDATES
-	ch_config INTERVAL
 	log_this "[$checkmark] Config created."
 }
 
