@@ -1,9 +1,9 @@
 #!/bin/bash
 
+src_url="https://raw.githubusercontent.com/optimanetworks/onx/main/config/watool.sh"
 install_path="/usr/local/sbin/watool"
 log_file="/var/log/watool.log"
 config_file="/usr/local/etc/watool.conf"
-update_script=false
 
 # Text Colors
 RES='\033[0m'; RED='\033[00;31m'; GRE='\033[00;32m'; BLU='\033[00;34m'; YEL='\033[00;93m'
@@ -12,7 +12,7 @@ checkmark="${GRE}\U2714${RES}"; crossmark="${RED}\U2716${RES}"
 
 log_this () {
 	# Log function input with date and time.
-	echo `date +%Y/%m/%d' '%H:%M:%S`" $1" | tee -a "$log_file"
+	echo -e "[`date +%Y-%m-%d' '%H:%M:%S`] $1" | tee -a "$log_file"
 }
 
 check_privileges () {
@@ -62,6 +62,24 @@ ch_val () {
 	sed -ri "s/^[#]*\s*${1}=.*/$1=\"$2\"/" "$3"
 }
 
+cron_mgr () {
+	case $1 in
+		CREATE)
+			if ! $(crontab -l | egrep -v "^(#|$)" | grep -q "$install_path --run"); then
+    			crontab -l | { cat; echo "$INTERVAL $install_path --run"; } | crontab -
+				log_this "[$checkmark] Cronjob created."
+			fi
+			;;
+		REMOVE)
+			if $(crontab -l | egrep -v "^(#|$)" | grep -q "$install_path --run"); then
+				crontab -l | grep -v "$install_path --run"
+				log_this "[$checkmark] Cronjob removed."
+			fi
+			;;
+		CHECK) $(crontab -l | egrep -v "^(#|$)" | grep -q "$install_path --run") && return 0 || return 1 ;;
+	esac
+}
+
 mk_config () {
 	touch $config_file
 	echo -e '# This is the configuration file for watool.\nRESTART=false\nUPDATES=false\nINTERVAL="@weekly"' > $config_file
@@ -69,6 +87,7 @@ mk_config () {
 	ch_config RESTART
 	ch_config UPDATES
 	ch_config INTERVAL
+	log_this "[$checkmark] Config created."
 }
 
 ch_config () {
@@ -94,40 +113,45 @@ ch_config () {
 	esac
 }
 
-self_install () {
+installer () {
 	# Move script to destination file path if needed and create cronjob if it doesn't exist. 
 	[ -e "$log_file" ] || touch "$log_file"
-	if $update_script && [ ! -e "$install_path" ]; then
-		log_this "Script not installed yet, exiting..."; exit 1
+	[ -e "$config_file" ] || mk_config
+	. $config_file
+	if [ -e "$install_path" ]; then
+		log_this "[$crossmark] Script already installed, exiting..."; exit 1
+	else
+		wget -qO $install_path $src_url
+		chmod +x $install_path
+		log_this "[$checkmark] Script downloaded to $install_path."
+		cron_mgr CREATE
+		log_this "[$checkmark] Installation procedure completed."
 	fi
-	[ -e "$config_file" ] || mk_config; . $config_file
-	if ! $update_script && [ -e "$install_path" ]; then
-		echo "Script already installed, exiting..."; exit 1
-	elif $update_script && [ -e "$install_path" ]; then
-		mv $0 "$install_path"
-		log_this "Updated script in $install_path."
-	elif ! $update_script && [ ! -e "$install_path" ]; then
-		mv $0 "$install_path"
-		log_this "Script moved to "$install_path"."
-		if [[ $(crontab -l | egrep -v "^(#|$)" | grep -q '/usr/local/sbin/watool --run'; echo $?) == 1 ]]; then
-    		set -f
-    		echo $(crontab -l ; echo ''$INTERVAL' /usr/local/sbin/watool --run') | crontab -
-    		set +f
-			log_this "Cronjob created."
-		fi
-		log_this "Installation procedure completed."
-	fi
+}
+
+uninstaller () {
+	cron_mgr REMOVE
+	rm $config_file && log_this "[$checkmark] Config file deleted."
+	rm $install_path && log_this "[$checkmark] Script deleted."
+}
+
+updater () {
+	[ -e "$config_file" ] || mk_config
+	. $config_file
+	cron_mgr CHECK || cron_mgr CREATE
+	wget -qO $install_path $src_url
+	chmod +x $install_path && log_this "[$checkmark] Updated script in $install_path."
 }
 
 run_task () {
 	# Run unattended-upgrade to check for and install security updates, then reboot.
 	. $config_file
 	if $UPDATES; then
-		unattended-upgrade && log_this "Ran unattended upgrade." || log_this "Unattended upgrade failed."
+		unattended-upgrade && log_this "[$checkmark] Ran unattended upgrade." || log_this "[$crossmark] Unattended upgrade failed."
 	fi
 	if $RESTART; then
 		log_this "Rebooting..."
-		/sbin/shutdown -r now || log_this "Reboot failed."
+		/sbin/shutdown -r now || log_this "[$crossmark] Reboot failed."
 	fi
 }
 
@@ -139,13 +163,17 @@ case $1 in
 		;;
 	-i|--install)
 		check_privileges
-		self_install
+		installer
+		exit 0
+		;;
+	--uninstall)
+		check_privileges
+		uninstaller
 		exit 0
 		;;
 	-U|--update)
 		check_privileges
-		update_script=true
-		self_install
+		installer
 		exit 0
 		;;
 	-c|--config)
@@ -172,6 +200,8 @@ case $1 in
 					;;
 				3)
 					ch_config INTERVAL
+					cron_mgr REMOVE
+					cron_mgr CREATE
 					;;
 				0)
 					exit 0
@@ -186,12 +216,12 @@ case $1 in
 		;;
 	"")
 		show_help
-		log_this "Script ran without option parameter."
+		log_this "[$crossmark] Script ran without option parameter."
 		exit 1
 		;;
 	*)
 		show_help
-		log_this "Script ran with invalid option parameter: $1"
+		log_this "[$crossmark] Script ran with invalid option parameter: $1"
 		exit 1
 		;;
 esac
