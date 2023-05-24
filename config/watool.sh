@@ -36,6 +36,8 @@ show_help () {
 	echo ""
 	echo "    -i|--install -  Installs the script."
 	echo ""
+	echo "    --uninstall  -  Uninstalls the script."
+	echo ""
 	echo "    -U|--update  -  Update the existing script."
 	echo ""
 	echo "    -c|--config  -  Change configuration parameters interactively."
