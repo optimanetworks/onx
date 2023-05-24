@@ -124,7 +124,7 @@ installer () {
 		chmod +x $install_path
 		log_this "[$checkmark] Script downloaded to $install_path."
 		cron_mgr CREATE
-		log_this "[$checkmark] Installation procedure completed."
+		log_this "[$checkmark] Installation procedure completed. Use 'sudo watool --config' to configure settings, all are disabled by default."
 	fi
 }
 
