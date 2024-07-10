@@ -107,9 +107,12 @@ CHECK_DISK () {
         PARTITION_DISK $DISK
     elif [ ${#PARTS[@]} -gt 1 ]; then
         for P in ${PARTS[@]}; do
-            IS_MOUNTED $P &&
-                (echo "$P is mounted, skipping disk."; return;)
+            if IS_MOUNTED $P; then
+                echo "$P is mounted, skipping $DISK."
+                return
+            fi
         done
+        PARTITION_DISK $DISK
     else
         local PART=${PARTS[0]}
         local FS_TYPE=$(lsblk -f -n -o FSTYPE $PART)
