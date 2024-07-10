@@ -11,7 +11,7 @@
 ### END INIT INFO
 
 ONXSD_VER="1.0.1"
-GITHUB_RAW_URL=""
+GITHUB_RAW_URL="https://raw.githubusercontent.com/optimanetworks/onx/main/config/onxsd"
 MIN_SIZE_GiB=465 # Minimum disk size is 512GB/465GiB
 
 SELF_UPDATE () {
