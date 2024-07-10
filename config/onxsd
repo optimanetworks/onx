@@ -89,7 +89,7 @@ CHECK_DISK () {
         return
     fi
     
-    local PARTS=($(lsblk -dn -o NAME $DISK | grep -v "^${DISK}$"))
+    local PARTS=($(ls ${DISK}? 2> /dev/null))
     
     if [ ${#PARTS[@]} -eq 0 ]; then
         # If the disk contains less or more than 1 partition, partition and format disk.
@@ -100,7 +100,7 @@ CHECK_DISK () {
                 (echo "$P is mounted, skipping disk."; return;)
         done
     else
-        local PART=/dev/${PARTS[0]}
+        local PART=${PARTS[0]}
         local FS_TYPE=$(lsblk -f -n -o FSTYPE $PART)
         
         if ! ALIGN_CHECK $DISK ${PARTS[0]}; then
