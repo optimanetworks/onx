@@ -29,22 +29,22 @@ PARTITION_DISK () {
     echo "Partitioning and formatting $DISK."
     
     # Wipe filesystem signatures from disk.
-    wipefs -af $DISK && 
+    wipefs -af "$DISK" && 
         echo "Wiped filesystem signatures from $DISK." ||
         echo "Failed to wipe filesystem signatures from $DISK."
         
     # Create partition table on disk.
-    parted $DISK --script mktable gpt &&
+    parted "$DISK" --script mktable gpt &&
         echo "Wrote GUID Partition Table to $DISK." ||
         (echo "Failed to write GUID Partition Table to $DISK."; return 1;)
         
     # Create partition on disk.
-    parted -a minimal $DISK --script mkpart primary ext4 1MiB 100% &&
+    parted -a minimal "$DISK" --script mkpart primary ext4 1MiB 100% &&
         echo "Created partition on $DISK." ||
         (echo "Failed to create partition on $DISK."; return 1;)
         
     # Write filesystem to partition.
-    mkfs.ext4 -F ${DISK}1 &&
+    mkfs.ext4 -F "$DISK}"1 &&
         echo "Wrote ext4 filesystem to ${DISK}1." ||
         (echo "Failed to write filesystem to ${DISK}1."; return 1;)
     
@@ -63,23 +63,23 @@ PARTITION_DISK () {
 }
 
 ALIGN_CHECK () {
-    local DISK=$1
-    local PART=$2
-    parted $DISK --script align-check min $PART
+    local DISK="$1"
+    local PART="$2"
+    parted "$DISK" --script align-check min "$PART"
 }
 
 UUID_IN_FSTAB () {
-    local UUID=$1
+    local UUID="$1"
     grep -q "UUID=${UUID}" /etc/fstab
 }
 
 IS_MOUNTED () {
-    local PART=$1
+    local PART="$1"
     mount | grep -q "^${PART} "
 }
 
 CHECK_DISK () {
-    local DISK=$1
+    local DISK="$1"
     local SIZE_B=$(lsblk -b -dn -o SIZE $DISK)
     local SIZE_GiB=$((SIZE_B / 1024 / 1024 / 1024))
     
@@ -89,7 +89,7 @@ CHECK_DISK () {
         return
     fi
     
-    local PARTS=($(ls ${DISK}? 2> /dev/null))
+    local PARTS=($(ls "$DISK"? 2> /dev/null))
     
     if [ ${#PARTS[@]} -eq 0 ]; then
         # If the disk contains less or more than 1 partition, partition and format disk.
@@ -147,4 +147,3 @@ done
 mount -av
 
 exit 0
-
