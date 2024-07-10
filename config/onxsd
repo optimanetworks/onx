@@ -1,0 +1,149 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          onxsd
+# Required-Start:
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: onx storage device service
+# Description:       Automatically detect, configure and mount storage devices.
+### END INIT INFO
+
+ONXSD_VER="1.0.1"
+GITHUB_RAW_URL=""
+MIN_SIZE_GiB=465 # Minimum disk size is 512GB/465GiB
+
+SELF_UPDATE () {
+    echo "Updating script from GitHub repository..."
+    wget --spider "$GITHUB_RAW_URL" ||
+    (echo "Couldn't reach github URL."; exit 1;)
+    curl -sSL "$GITHUB_RAW_URL" -o /usr/local/bin/onxsd &&
+    (chmod +x /usr/local/bin/onxsd; echo "Self update finished."; exit 0;) ||
+    (echo "Self update failed."; exit 1;)
+}
+
+PARTITION_DISK () {
+    local DISK="$1"
+    
+    echo "Partitioning and formatting $DISK."
+    
+    # Wipe filesystem signatures from disk.
+    wipefs -af $DISK && 
+        echo "Wiped filesystem signatures from $DISK." ||
+        echo "Failed to wipe filesystem signatures from $DISK."
+        
+    # Create partition table on disk.
+    parted $DISK --script mktable gpt &&
+        echo "Wrote GUID Partition Table to $DISK." ||
+        (echo "Failed to write GUID Partition Table to $DISK."; return 1;)
+        
+    # Create partition on disk.
+    parted -a minimal $DISK --script mkpart primary ext4 1MiB 100% &&
+        echo "Created partition on $DISK." ||
+        (echo "Failed to create partition on $DISK."; return 1;)
+        
+    # Write filesystem to partition.
+    mkfs.ext4 -F ${DISK}1 &&
+        echo "Wrote ext4 filesystem to ${DISK}1." ||
+        (echo "Failed to write filesystem to ${DISK}1."; return 1;)
+    
+    local SERIAL=$(smartctl -ij $DISK | jq -r .'serial_number')
+    local UUID=$(blkid -s UUID -o value ${DISK}1)
+    
+    if [ "$SERIAL" == "null" ]; then
+        local MOUNTPOINT="/mnt/Media/$UUID"
+    else
+        local MOUNTPOINT="/mnt/Media/$SERIAL"
+    fi
+    
+    mkdir -p "$MOUNTPOINT"
+    
+    echo "UUID=${UUID} ${MOUNTPOINT} auto defaults,nofail,errors=continue 0 0" &>> /etc/fstab
+}
+
+ALIGN_CHECK () {
+    local DISK=$1
+    local PART=$2
+    parted $DISK --script align-check min $PART
+}
+
+UUID_IN_FSTAB () {
+    local UUID=$1
+    grep -q "UUID=${UUID}" /etc/fstab
+}
+
+IS_MOUNTED () {
+    local PART=$1
+    mount | grep -q "^${PART} "
+}
+
+CHECK_DISK () {
+    local DISK=$1
+    local SIZE_B=$(lsblk -b -dn -o SIZE $DISK)
+    local SIZE_GiB=$((SIZE / 1024 / 1024 / 1024))
+    
+    # Skip storage devices with a storage capacity lower than 512GB
+    if (( SIZE_GiB < MIN_SIZE_GiB)); then
+        echo "[$DISK] Disk capacity less than 512GB, skipping..."
+        return
+    fi
+    
+    local PARTS=($(lsblk -dn -o NAME $DISK | grep -v "^${DISK}$"))
+    
+    if [ ${#PARTS[@]} -eq 0 ]; then
+        # If the disk contains less or more than 1 partition, partition and format disk.
+        PARTITION_DISK $DISK
+    elif [ ${#PARTS[@]} -gt 1 ]; then
+        for P in ${PARTS[@]}; do
+            IS_MOUNTED $P &&
+                (echo "$P is mounted, skipping disk."; return;)
+        done
+    else
+        local PART=/dev/${PARTS[0]}
+        local FS_TYPE=$(lsblk -f -n -o FSTYPE $PART)
+        
+        if ! ALIGN_CHECK $DISK ${PARTS[0]}; then
+            # If the partition is not properly aligned, repartition and format disk.
+            PARTITION_DISK $DISK
+        elif [ "$FS_TYPE" != "ext4" ]; then
+            # If the partition does not contain an ext4 filesystem, repartition and format disk.
+            PARTITION_DISK $DISK
+        else
+            if IS_MOUNTED $PART; then
+                # If partition is mounted, perform read-only filesystem check.
+                e2fsck -n $PART
+            else
+                local UUID=$(blkid -s UUID -o value $PART)
+                if UUID_IN_FSTAB $UUID; then
+                    # If filesystem UUID is found in fstab, perform filesystem check and force repair.
+                    e2fsck -yf $PART
+                else
+                    # If filesystem UUID is not found in fstab, repartition and format disk.
+                    PARTITION_DISK $DISK
+                fi
+            fi
+        fi
+    fi
+    
+    [ "$SERIAL" == "null" ] &&
+        MOUNTPOINT="/mnt/Media/$UUID" ||
+        MOUNTPOINT="/mnt/Media/$SERIAL"
+    
+    mount -av
+}
+
+# Check for update parameter.
+if [[ "$1" == "--update" ]]; then
+    SELF_UPDATE
+fi
+
+# Run for every detected SATA disk.
+for DISK in $(ls /dev/sd? 2>/dev/null); do
+    CHECK_DISK $DISK
+done
+
+mount -av
+
+exit 0
+
