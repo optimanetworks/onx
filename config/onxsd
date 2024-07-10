@@ -81,7 +81,7 @@ IS_MOUNTED () {
 CHECK_DISK () {
     local DISK=$1
     local SIZE_B=$(lsblk -b -dn -o SIZE $DISK)
-    local SIZE_GiB=$((SIZE / 1024 / 1024 / 1024))
+    local SIZE_GiB=$((SIZE_B / 1024 / 1024 / 1024))
     
     # Skip storage devices with a storage capacity lower than 512GB
     if (( SIZE_GiB < MIN_SIZE_GiB)); then
