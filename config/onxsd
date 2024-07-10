@@ -136,12 +136,6 @@ CHECK_DISK () {
             fi
         fi
     fi
-    
-    [ "$SERIAL" == "null" ] &&
-        MOUNTPOINT="/mnt/Media/$UUID" ||
-        MOUNTPOINT="/mnt/Media/$SERIAL"
-    
-    mount -av
 }
 
 # Check for update parameter.
