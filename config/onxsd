@@ -17,10 +17,10 @@ MIN_SIZE_GiB=465 # Minimum disk size is 512GB/465GiB
 SELF_UPDATE () {
     echo "Updating script from GitHub repository..."
     wget --spider "$GITHUB_RAW_URL" ||
-    (echo "Couldn't reach github URL."; exit 1;)
+        echo "Couldn't reach github URL."
     curl -sSL "$GITHUB_RAW_URL" -o /usr/local/bin/onxsd &&
-    (chmod +x /usr/local/bin/onxsd; echo "Self update finished."; exit 0;) ||
-    (echo "Self update failed."; exit 1;)
+        (chmod +x /usr/local/bin/onxsd; echo "Self update finished.";) ||
+        echo "Self update failed."
 }
 
 PARTITION_DISK () {
@@ -136,6 +136,7 @@ CHECK_DISK () {
 # Check for update parameter.
 if [[ "$1" == "--update" ]]; then
     SELF_UPDATE
+    exit 0
 fi
 
 # Run for every detected SATA disk.
